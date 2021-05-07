@@ -9,6 +9,7 @@ pool:
   
 trigger: 
     - master
+    - azure-pipelines
 
 steps:
   - task: Npm@1
@@ -48,3 +49,25 @@ steps:
 
   - task: PublishBuildArtifacts@1
     displayName: 'Publish Artifact: drop' 
+
+  - task: SonarCloudPrepare@1
+    displayName: 'Prepare SonarCloud analysis'
+    inputs:
+      SonarCloud: 'SonarCloud connection 1'
+      organization: '$(SonarOrganization)'
+      scannerMode: 'MSBuild'
+      projectKey: '$(SONAR_PROJECT_KEY)'
+      projectName: '$(SonarProjectName)'
+      projectVersion: '$(Build.BuildNumber)'
+      extraProperties: |
+       sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/TestResults/Coverage/coverage.opencover.xml
+       sonar.exclusions=**/wwwroot/lib/**/*
+  - script: |
+      reportgenerator -reports:$(Build.SourcesDirectory)/**/coverage.cobertura.xml -targetdir:$(Build.SourcesDirectory)/CodeCoverage -reporttypes:HtmlInline_AzurePipelines
+    displayName: 'Create code coverage report'
+
+  - task: SonarCloudAnalyze@1
+    displayName: 'Run SonarCloud code analysis'
+
+  - task: SonarCloudPublish@1
+    displayName: 'Publish SonarCloud quality gate results'
